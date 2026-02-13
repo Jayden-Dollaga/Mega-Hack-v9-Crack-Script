@@ -119,24 +119,23 @@ with progress_log("Extracting geode file and patching"):
             filename = item.filename
             data = zip_in.read(filename)
             
-            match filename:
-                case "absolllute.megahack.dll":
-                    if data == (data := ID_CHECK_PAT.sub(lambda m: PATCH_DATA1 + m.group(0)[len(PATCH_DATA1):], data, 1)):
-                        err("Failed to find pattern for the id check!")
-                    if data == (data := JSON_SIGNATURE_CHECK_PAT.sub(lambda m: PATCH_DATA1 + m.group(0)[len(PATCH_DATA1):], data, 1)):
-                        err("Failed to find pattern for the json signature check!")
-                    if data == (data := KEY_BYBASS_PAT.sub(PATCH_DATA2, data, 1)):
-                        err("Failed to find pattern for the key bypass!")
+            if filename == "absolllute.megahack.dll":
+                if data == (data := ID_CHECK_PAT.sub(lambda m: PATCH_DATA1 + m.group(0)[len(PATCH_DATA1):], data, 1)):
+                    err("Failed to find pattern for the id check!")
+                if data == (data := JSON_SIGNATURE_CHECK_PAT.sub(lambda m: PATCH_DATA1 + m.group(0)[len(PATCH_DATA1):], data, 1)):
+                    err("Failed to find pattern for the json signature check!")
+                if data == (data := KEY_BYBASS_PAT.sub(PATCH_DATA2, data, 1)):
+                    err("Failed to find pattern for the key bypass!")
 
-                    # need to update the filename too
-                    item.filename = "absolllute.megahack.cracked.dll"
-                case "mod.json":
-                    # we need to modify the id to match the output filename, all the other changes are cosmetic
-                    mod = json.loads(data)
-                    mod["id"] = "absolllute.megahack.cracked"
-                    mod["name"] = "Mega Hack Cracked"
-                    mod["description"] = "ts pmo"
-                    data = json.dumps(mod, indent="\t").encode()
+                # need to update the filename too
+                item.filename = "absolllute.megahack.cracked.dll"
+            elif filename == "mod.json":
+                # we need to modify the id to match the output filename, all the other changes are cosmetic
+                mod = json.loads(data)
+                mod["id"] = "absolllute.megahack.cracked"
+                mod["name"] = "Mega Hack Cracked"
+                mod["description"] = "ts pmo"
+                data = json.dumps(mod, indent="\t").encode()
             
             zip_out.writestr(item, data)
 
