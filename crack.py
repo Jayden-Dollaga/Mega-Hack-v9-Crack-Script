@@ -14,7 +14,6 @@ Tested for the following MH versions: v9.0.3, v9.0.7, v9.0.9
 """
 
 import platform
-import os
 
 err = lambda msg: print(f"[ERROR] {msg}") or exit(1)
 warn = lambda msg: print(f"[WARNING] {msg}")
@@ -22,9 +21,27 @@ warn = lambda msg: print(f"[WARNING] {msg}")
 if platform.system().lower() != 'windows':
     err(f"This crack is meant for windows versions of Mega Hack. {platform.system()} is not supported.")
 
-LOCALAPPDATA = os.getenv("LOCALAPPDATA", None)
-if not LOCALAPPDATA:
-    err("Unable to find the local AppData directory in your environment variables. Aborting.")
+# MegaHack uses SHGetKnownFolderPath to find the local appdata directory. If it fails we can fall back to using the environment variable.
+import ctypes
+import uuid
+import os
+
+FOLDERID_LocalAppData =  uuid.UUID("{F1B32785-6FBA-4FCF-9D55-7B8E7F157091}").bytes_le
+appdata_dir_buf = ctypes.c_wchar_p()
+
+if ctypes.windll.shell32.SHGetKnownFolderPath(
+    ctypes.byref(ctypes.create_string_buffer(FOLDERID_LocalAppData, 16)),
+    0, 0,
+    ctypes.byref(appdata_dir_buf)
+):
+    warn("Failed to find the local appdata directory using SHGetKnownFolderPath. Trying %LOCALAPPDATA%.")
+    LOCALAPPDATA = os.getenv("LOCALAPPDATA", None)
+    if not LOCALAPPDATA:
+        err("Unable to find the local AppData directory with SHGetKnownFolderPath or %LOCALAPPDATA%. Aborting.")
+else:
+    LOCALAPPDATA = appdata_dir_buf.value
+
+print(f"Found the local appdata directory at '{LOCALAPPDATA!s}'")
 
 # the rest of the shit we need
 from urllib.request import urlopen
@@ -119,23 +136,24 @@ with progress_log("Extracting geode file and patching"):
             filename = item.filename
             data = zip_in.read(filename)
             
-            if filename == "absolllute.megahack.dll":
-                if data == (data := ID_CHECK_PAT.sub(lambda m: PATCH_DATA1 + m.group(0)[len(PATCH_DATA1):], data, 1)):
-                    err("Failed to find pattern for the id check!")
-                if data == (data := JSON_SIGNATURE_CHECK_PAT.sub(lambda m: PATCH_DATA1 + m.group(0)[len(PATCH_DATA1):], data, 1)):
-                    err("Failed to find pattern for the json signature check!")
-                if data == (data := KEY_BYBASS_PAT.sub(PATCH_DATA2, data, 1)):
-                    err("Failed to find pattern for the key bypass!")
+            match filename:
+                case "absolllute.megahack.dll":
+                    if data == (data := ID_CHECK_PAT.sub(lambda m: PATCH_DATA1 + m.group(0)[len(PATCH_DATA1):], data, 1)):
+                        err("Failed to find pattern for the id check!")
+                    if data == (data := JSON_SIGNATURE_CHECK_PAT.sub(lambda m: PATCH_DATA1 + m.group(0)[len(PATCH_DATA1):], data, 1)):
+                        err("Failed to find pattern for the json signature check!")
+                    if data == (data := KEY_BYBASS_PAT.sub(PATCH_DATA2, data, 1)):
+                        err("Failed to find pattern for the key bypass!")
 
-                # need to update the filename too
-                item.filename = "absolllute.megahack.cracked.dll"
-            elif filename == "mod.json":
-                # we need to modify the id to match the output filename, all the other changes are cosmetic
-                mod = json.loads(data)
-                mod["id"] = "absolllute.megahack.cracked"
-                mod["name"] = "Mega Hack Cracked"
-                mod["description"] = "ts pmo"
-                data = json.dumps(mod, indent="\t").encode()
+                    # need to update the filename too
+                    item.filename = "absolllute.megahack.cracked.dll"
+                case "mod.json":
+                    # we need to modify the id to match the output filename, all the other changes are cosmetic
+                    mod = json.loads(data)
+                    mod["id"] = "absolllute.megahack.cracked"
+                    mod["name"] = "Mega Hack Cracked"
+                    mod["description"] = "ts pmo"
+                    data = json.dumps(mod, indent="\t").encode()
             
             zip_out.writestr(item, data)
 
