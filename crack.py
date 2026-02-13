@@ -105,9 +105,15 @@ MEGAHACK_URL = "https://absolllute.com/api/mega_hack/v9/files/{}/{}".format(grou
 
 with progress_log(f"Downloading {cur_bundle['name']}"):
     try:
-        with urlopen(MEGAHACK_URL) as r:
+        request = Request(
+            MEGAHACK_URL,
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+        with urlopen(request) as r:
             megahack_zip = r.read()
     except HTTPError as e:
+        if e.code == 403:
+            err("Access to the Mega Hack package download was denied (HTTP 403). This script can no longer fetch releases; use the official Mega Hack installer instead.")
         err(f"HTTP error: {e.code}")
     except URLError as e:
         err(f"URL error: {e.reason}")
