@@ -44,7 +44,7 @@ else:
 print(f"Found the local appdata directory at '{LOCALAPPDATA!s}'")
 
 # the rest of the shit we need
-from urllib.request import urlopen
+from urllib.request import urlopen, Request
 from urllib.error import HTTPError, URLError
 import zipfile
 import io
@@ -76,7 +76,19 @@ def progress_log(msg: str):
 # json containing all megahack version and information
 INSTALL_JSON_URL = "https://absolllute.com/api/mega_hack/v9/install.json"
 
-r = urlopen(INSTALL_JSON_URL)
+try:
+    request = Request(
+        INSTALL_JSON_URL,
+        headers={"User-Agent": "Mozilla/5.0"}
+    )
+    r = urlopen(request)
+except HTTPError as e:
+    if e.code == 403:
+        err("Access to the install API was denied (HTTP 403). Use the official Mega Hack installer instead of this script.")
+    err(f"Unable to get installation json. HTTP error: {e.code}")
+except URLError as e:
+    err(f"Unable to get installation json. URL error: {e.reason}")
+
 if r.status != 200:
     err(f"Unable to get installation json. Status Code: {r.status}")
 
